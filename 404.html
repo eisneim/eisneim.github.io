@@ -1,0 +1,58 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><title>把坑填上 - 咱们来聊聊web开发的各种坑&gt;&gt;&gt;Eisneim的博客</title><meta name="description" content="dev blog about web development using Golang,javascript,nodejs,anuglarjs,mongodb and more."/><meta name="author" content="Eisneim Terry"/><meta name="handheldfriendly" content="true"/><meta name="mobileoptimized" content="320"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><meta http-equiv="cleartype" content="on"/><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/><link rel="stylesheet" href="/css/application.css"/><link rel="stylesheet" href="/lib/prism/themes/prism-tomorrow.css"/><script>//<![CDATA[
+WebFontConfig = {
+  google: { families: [ 'Source+Sans+Pro:400,600,900,400italic:latin' ] }
+};
+(function() {
+  var wf = document.createElement('script');
+  wf.src = ('https:' == document.location.protocol ? 'https' : 'http') +
+    '://ajax.googleapis.com/ajax/libs/webfont/1/webfont.js';
+  wf.type = 'text/javascript';
+  wf.async = 'true';
+  var s = document.getElementsByTagName('script')[0];
+  s.parentNode.insertBefore(wf, s);
+})();
+//]]></script></head><body><div role="main" class="container container--articles"><h1>404&mdash;页面不存在</h1>
+<p>您访问的页面不存在.</p>
+</div><footer role="contentinfo" class="footer"><p><a href="http://eisneim.com" target="_blank">Eisneim.com</a>&copy;2014. | <a href="http://weibo.com/eisneim" target="_blank">Weibo</a> | <a href="https://github.com/eisneim" target="_blank">Github</a> | Built with <a href="http://harpjs.com" target="_blank">Harp</a>. </p></footer><script src="/lib/jquery.js"></script><script src="/lib/prism/prism.js" data-default-language="markup"></script><script>$(function(){
+ var bgcolors = {
+  red:'#D84945',
+  white:'#fff',
+  pale:'#d1d1d1',
+  light_purple:'#CC99CD',
+  purple:'#5C78C6',
+  orange:'#FE6D44',
+  coffee:'#AF7C49',
+  indigo:'#3F51B5',
+  blue:'#46788F',//316AAC
+  cyan:'#8DC7F9',
+  teal:'#159588',
+  green:'#2ECC71',
+  light_green:'#589A5F',
+  lime:'#BAE256',
+  yellow:'#F4C800',
+  dark:'#2D2D2D',
+  bg2:'#3E4A55',
+  bg:'#003837',
+ },
+ match = {
+  bg:'green',
+  bg2:'light_green',
+  dark:'light_purple',
+  coffee:'yellow',
+  orange:'dark',
+  red:'orange',
+  yellow:'white',
+  
+ };
+ var $header = $('.opening');
+ var bg = $header.data('headerbg')||'dark_grey';
+ $header.css('background-color',bgcolors[bg]);
+ //change title color
+ $header.css('color',bgcolors[ match[bg]? match[bg]:'white' ]);
+});</script></body><script>var disqus_shortname = 'true';
+(function () {
+    var s = document.createElement('script'); s.async = true;
+    s.type = 'text/javascript';
+    s.src = '//' + disqus_shortname + '.disqus.com/count.js';
+    (document.getElementsByTagName('HEAD')[0] || document.getElementsByTagName('BODY')[0]).appendChild(s);
+}());</script></html>

@@ -1,0 +1,161 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><title>angularJS应用改变路由时动态改变页面标题的不同方法</title><meta name="description" content="dev blog about web development using Golang,javascript,nodejs,anuglarjs,mongodb and more."/><meta name="author" content="Eisneim Terry"/><meta name="handheldfriendly" content="true"/><meta name="mobileoptimized" content="320"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><meta http-equiv="cleartype" content="on"/><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/><link rel="stylesheet" href="/css/application.css"/><link rel="stylesheet" href="/lib/prism/themes/prism-tomorrow.css"/><script>//<![CDATA[
+WebFontConfig = {
+  google: { families: [ 'Source+Sans+Pro:400,600,900,400italic:latin' ] }
+};
+(function() {
+  var wf = document.createElement('script');
+  wf.src = ('https:' == document.location.protocol ? 'https' : 'http') +
+    '://ajax.googleapis.com/ajax/libs/webfont/1/webfont.js';
+  wf.type = 'text/javascript';
+  wf.async = 'true';
+  var s = document.getElementsByTagName('script')[0];
+  s.parentNode.insertBefore(wf, s);
+})();
+//]]></script></head><body><div data-headerbg="red" class="opening"><header class="opening-header"><div class="container"><a href="/" class="opening-return">博客首页</a><h1 class="opening-title">angularJS应用改变路由时动态改变页面标题的不同方法</h1><time datetime="2014-7-4" class="opening-time">2014-7-4</time><a href="/articles" class="back">返回列表</a><a href="/" class="back">blog</a></div></header></div><div role="main" class="container"><blockquote>
+<p>本文以探讨当路由改变时动态改变页面标题的不同方法，展示在angular应用中如何应用全局变量及一些小细节。</p>
+</blockquote>
+<p>动态地改变一个angular应用的标题的解决方法很多，我们来看看最容易想到的：监听路由改变成功事件，将标题的数据绑定到$rootScope中，改变$rootScope以改变标题。</p>
+<h3>JS:</h3>
+<pre><code class="language-javascript">    // 省略路由配置
+    $routeProvider.when(&#39;/&#39;, {
+        title: &#39;首页&#39;,
+        templateUrl: &#39;/Assets/Views/Home.html&#39;,
+        controller: &#39;HomeController&#39;
+    });
+
+    .......
+
+    myApp.run([&#39;$location&#39;, &#39;$rootScope&#39;, function($location, $rootScope) {
+        // 每当路由改变成功的时候，更新标题
+        $rootScope.$on(&#39;$routeChangeSuccess&#39;, function (event, current, previous) {
+            $rootScope.title = current.$route.title;
+        });
+    }]);</code></pre>
+<h3>HTML:</h3>
+<pre><code>&lt;!DOCTYPE html&gt;
+&lt;html ng-app=&quot;myApp&quot;&gt;
+&lt;head&gt;
+    &lt;title ng-bind=&quot;title + &#39;__网站名称&#39;&quot;&gt;默认标题&lt;/title&gt;
+    &lt;!-- title 或者 $root.title都可以，因为$scope.$root = $rootScope --&gt;
+...</code></pre>
+<p>使用ng-bind而不使用{{ }}是为了防止title的数据没有准备好时&quot;{{}}&quot;会显示出来。
+使用$rootScope来bind页面中的某些东西的确很方便，但是把$rootScope当成一般scope来用以及当成全局变量来用都不是个好习惯
+ - $rootScope存在的意义是为了创造子scope
+ - 把它当成全局变量的容器，和在传统的js应用中使用非常多的全局变量的危害是一样的
+ - 对于高度模块化的angular应用来说，把一些东西放到rootScope中语义性太差，就是inject的时候你不知道它是干嘛的。</p>
+<p> 改进：</p>
+<pre><code class="language-html"> &lt;html ng-app=&quot;myApp&quot; ng-controller=&quot;topCtrl&quot;&gt;
+ &lt;head&gt;
+    &lt;title ng-bind=&quot;title + &#39;__网站名称&#39;&quot;&gt;默认标题&lt;/title&gt;</code></pre>
+<pre><code class="language-javascript">
+    app.controller(&#39;topCtrl&#39;,[&#39;$scope&#39;,function($scope) {
+        $scope.$on(&#39;$routeChangeSuccess&#39;, function (event, current, previous) {
+            $scope.title = current.$route.title;
+        });
+    }]);</code></pre>
+<h2>更简单的方式：</h2>
+<pre><code class="language-html"> &lt;html ng-app=&quot;myApp&quot; ng-controller=&quot;topCtrl&quot;&gt;
+ &lt;head&gt;
+    &lt;title&gt;默认标题&lt;/title&gt;</code></pre>
+<pre><code class="language-javascript">    // 省略路由配置
+    $routeProvider.when(&#39;/&#39;, {
+        title: &#39;首页&#39;,
+        templateUrl: &#39;/Assets/Views/Home.html&#39;,
+        controller: &#39;HomeController&#39;
+    });
+
+    .......
+
+    app.controller(&#39;topCtrl&#39;,[&#39;$scope&#39;,&#39;$window&#39;,function($scope,$window) {
+        $scope.$on(&#39;$routeChangeSuccess&#39;, function (event, current, previous) {
+            $window.document.title = current.$route.title;
+        });
+    }]);</code></pre>
+<h2>在ui-router中如何和实现？</h2>
+<p>ui-router中的每一个state提供了可以自定义数据的data属性：</p>
+<pre><code class="language-javascript">    // 省略路由配置
+    $stateProvider
+      .state(&#39;home&#39;, {
+        url: &#39;/&#39;,
+        templateUrl: &#39;/app/home/home.html&#39;,
+        controller:&#39;homeCtrl&#39;,
+        data:{
+          title:&#39;首页&#39;,
+          backgroundColor:&#39;#efefef&#39;,
+          coverImage:&#39;....&#39;
+        }
+      })
+
+    app.controller(&#39;topCtrl&#39;,[&#39;$scope&#39;,&#39;$window&#39;,function($scope,$window) {
+        $scope.$on(&#39;$stateChangeSuccess&#39;,function(evt, toState, toParams, fromState, fromParams){
+            // 改变 页面的标题
+            $window.document.title = (toState.data.title||&#39;&#39;)+&#39;——Eisneim的博客&#39;;
+        })
+    }]);</code></pre>
+<h2>其他方法？</h2>
+<p>或许你还想到了做一个改变标题的service或者directive，但是都没有上述方法简便：service提供一个getTitle和setTitle方法，每次要改变title的时候调用setTitle(&#39;标题&#39;)。
+directive的方式：(以下代码是我认为的解决办法，没有实际测试过)</p>
+<pre><code class="language-html">&lt;dynamic-title&gt;</code></pre>
+<pre><code class="language-javascript">app.directive(&#39;dynamicTitle&#39;,function(){
+    return {
+        restrict:&#39;E&#39;,
+        replace:true,
+        template:&#39;&lt;title&gt;{{title}}&lt;/title&gt;&#39;,
+        controller:function($scope){
+            $scope.$on(&#39;$routeChangeSuccess&#39;, function (event, current, previous) {
+            $scope.title = current.$route.title;
+        });
+        }
+    }
+    })</code></pre>
+<ol class="post-nav"><a href="/articles/2014-7-5-meaning-of-npm-bower-version-prefix.html" class="post-prev">NPM和Bower的版本指定方法和含义</a><a href="/articles/2014-5-1-repire-l2tpd-centos-error.html" class="post-next">CentOS 修复一键安装l2tpd+pptpd遇到的问题</a></ol></div><div class="comments"><div class="container"><div id="disqus_thread"></div><script>/* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+var disqus_shortname = 'true'; // required: replace example with your forum shortname
+
+/* * * DON'T EDIT BELOW THIS LINE * * */
+(function() {
+    var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+    dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+})();</script><noscript><p>Please enable JavaScript to view the comments.</p></noscript></div></div><footer role="contentinfo" class="footer"><p><a href="http://eisneim.com" target="_blank">Eisneim.com</a>&copy;2014. | <a href="http://weibo.com/eisneim" target="_blank">Weibo</a> | <a href="https://github.com/eisneim" target="_blank">Github</a> | Built with <a href="http://harpjs.com" target="_blank">Harp</a>. </p></footer><script src="/lib/jquery.js"></script><script src="/lib/prism/prism.js" data-default-language="markup"></script><script>$(function(){
+ var bgcolors = {
+  red:'#D84945',
+  white:'#fff',
+  pale:'#d1d1d1',
+  light_purple:'#CC99CD',
+  purple:'#5C78C6',
+  orange:'#FE6D44',
+  coffee:'#AF7C49',
+  indigo:'#3F51B5',
+  blue:'#46788F',//316AAC
+  cyan:'#8DC7F9',
+  teal:'#159588',
+  green:'#2ECC71',
+  light_green:'#589A5F',
+  lime:'#BAE256',
+  yellow:'#F4C800',
+  dark:'#2D2D2D',
+  bg2:'#3E4A55',
+  bg:'#003837',
+ },
+ match = {
+  bg:'green',
+  bg2:'light_green',
+  dark:'light_purple',
+  coffee:'yellow',
+  orange:'dark',
+  red:'orange',
+  yellow:'white',
+  
+ };
+ var $header = $('.opening');
+ var bg = $header.data('headerbg')||'dark_grey';
+ $header.css('background-color',bgcolors[bg]);
+ //change title color
+ $header.css('color',bgcolors[ match[bg]? match[bg]:'white' ]);
+});</script></body><script>var disqus_shortname = 'true';
+(function () {
+    var s = document.createElement('script'); s.async = true;
+    s.type = 'text/javascript';
+    s.src = '//' + disqus_shortname + '.disqus.com/count.js';
+    (document.getElementsByTagName('HEAD')[0] || document.getElementsByTagName('BODY')[0]).appendChild(s);
+}());</script></html>

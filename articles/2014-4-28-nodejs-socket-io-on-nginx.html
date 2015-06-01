@@ -1,0 +1,128 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><title>利用Nginx代理NodeJS+socket.io</title><meta name="description" content="dev blog about web development using Golang,javascript,nodejs,anuglarjs,mongodb and more."/><meta name="author" content="Eisneim Terry"/><meta name="handheldfriendly" content="true"/><meta name="mobileoptimized" content="320"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><meta http-equiv="cleartype" content="on"/><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/><link rel="stylesheet" href="/css/application.css"/><link rel="stylesheet" href="/lib/prism/themes/prism-tomorrow.css"/><script>//<![CDATA[
+WebFontConfig = {
+  google: { families: [ 'Source+Sans+Pro:400,600,900,400italic:latin' ] }
+};
+(function() {
+  var wf = document.createElement('script');
+  wf.src = ('https:' == document.location.protocol ? 'https' : 'http') +
+    '://ajax.googleapis.com/ajax/libs/webfont/1/webfont.js';
+  wf.type = 'text/javascript';
+  wf.async = 'true';
+  var s = document.getElementsByTagName('script')[0];
+  s.parentNode.insertBefore(wf, s);
+})();
+//]]></script></head><body><div data-headerbg="null" class="opening"><img src="/images/developer-hurry.png" alt="" class="opening-image"/><header class="opening-header"><div class="container"><a href="/" class="opening-return">博客首页</a><h1 class="opening-title">利用Nginx代理NodeJS+socket.io</h1><time datetime="2014-04-28" class="opening-time">2014-04-28</time><a href="/articles" class="back">返回列表</a><a href="/" class="back">blog</a></div></header></div><div role="main" class="container"><p>为啥一定呀用nginx做反向代理呢？直接使nodejs应用listen 80端口不就是行么？这是最简单的方法，使用nginx做代理有如下几个好处：
+ - 同一个服务器（一般大家用的都是VPS）可以同时在不同的端口跑多个网站，比如一个你的技术nodejs程序跑3000端口，一个Python的跑9000端口，php程序跑5000端口，端口是用不完的所以在该服务器上可以放非常非常多的网站。
+ - 充分利用nginx处理静态文件的优势，虽然node和nginx都是基于事件响应的比Apache能有更高的并发链接数，但nginx比node明显更胜一筹，而且这样做也能为你的node进程减轻压力。
+ - 便于后期做负载均衡，将不同类型的请求分配到不同的机器。</p>
+<p>由于以前的一些小php程序也要放在同一个vps上所以为了偷懒我选择了<a href="http://lnmp.org/">lnmp</a>，但是我在安装lnmp的时候当前lnmp的nginx的版本才1.2不支持websocket，必须要到1.3版本以后才能让socket.io使用websocket，而且php的版本也才5.3无法运行我写laravel站点(代码里面数组我全用<code>[]</code>,而php5.5才支持这种写法)，所以必须将他们升级，lnmp就是好直接让我偷懒到低：使用<a href="http://soft.vpser.net/lnmp/">soft.vpser.net/lnmp/</a> 目录下的<code>upgrade_nginx.sh</code>和<code>upgrade_php.sh</code>就可升级到任何版本，怎么使用我就不用说了吧。之后再安装nodejs和mongodb，安装方法非常简单自己谷歌；接下来使用<code>/root</code>目录下的vhost.sh来创建一个域名的虚拟服务器然后把配置改成如下代码。</p>
+<pre><code class="language-bash">server
+{
+    listen       80;
+    server_name *****.com;
+
+    #静态文件的位置
+    root  /home/wwwroot/****.com/public;
+
+    location /
+    {
+        # 设定正确的header
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header Host $http_host;
+        proxy_set_header X-NginX-Proxy true;
+
+        # nginx 1.13版本以上，支持websocket
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection &quot;upgrade&quot;;
+
+        proxy_redirect off;
+
+        #代理设置最关键的一行
+        proxy_pass http://127.0.0.1:5000/;
+        break;
+    }
+
+    location ~ .*\.(gif|jpg|jpeg|png|bmp|swf)$
+    {
+            expires      30d;
+    }
+
+# 下面这四行代码把我坑惨了
+#   location ~ .*\.(js|css)?$
+#   {
+#     expires      12h;
+#   }
+
+    access_log off;
+}</code></pre>
+<p>配置好了程序可以运行了，但是始终出现一个很蛋疼的问题：<a href="http://**.com/socket.io/socket.io.js">http://**.com/socket.io/socket.io.js</a> 404 not found .也就是访问不到这个文件，我试了很多方法，改变socket.io的端口然后再nginx配置文件里单独添加一个location，以及改变socket.io的resource：</p>
+<pre><code class="language-javascript">//Client
+var socket = io.connect(&#39;http://localhost:8081&#39;, {resource: &#39;test&#39;});
+
+//Server
+var io = require(&#39;socket.io&#39;).listen(8081, {resource: &#39;/test&#39;});</code></pre>
+<pre><code class="language-bash">location /test/ {
+    proxy_pass http://localhost:8081;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection $connection_upgrade;
+}</code></pre>
+<p>结果都不行，然后我就意识到一定是静态文件设置的问题，这个js文件本来是nodejs生成的，而nginx一定是把它认为是静态文件了，然后从/public/文件夹里找，当然找不到，于是我又改变了nginx配置里的root及location的位置，。。。。。居然还是不行！我想可能是缓存的问题，于是，将</p>
+<pre><code class="language-bash">location ~ .*\.(js|css)?$
+  {
+    expires      12h;
+  }</code></pre>
+<p>注释掉就好了，或者去掉js；哎,这个小小的问题浪费了我好多时间，所以记录下来希望对其他人有用。</p>
+<ol class="post-nav"><a href="/articles/2014-5-1-repire-l2tpd-centos-error.html" class="post-prev">CentOS 修复一键安装l2tpd+pptpd遇到的问题</a><a href="/articles/dive_deep_into_ui-router.html" class="post-next">深入理解AngularUI路由_ui-router</a></ol></div><div class="comments"><div class="container"><div id="disqus_thread"></div><script>/* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+var disqus_shortname = 'true'; // required: replace example with your forum shortname
+
+/* * * DON'T EDIT BELOW THIS LINE * * */
+(function() {
+    var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+    dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+})();</script><noscript><p>Please enable JavaScript to view the comments.</p></noscript></div></div><footer role="contentinfo" class="footer"><p><a href="http://eisneim.com" target="_blank">Eisneim.com</a>&copy;2014. | <a href="http://weibo.com/eisneim" target="_blank">Weibo</a> | <a href="https://github.com/eisneim" target="_blank">Github</a> | Built with <a href="http://harpjs.com" target="_blank">Harp</a>. </p></footer><script src="/lib/jquery.js"></script><script src="/lib/prism/prism.js" data-default-language="markup"></script><script>$(function(){
+ var bgcolors = {
+  red:'#D84945',
+  white:'#fff',
+  pale:'#d1d1d1',
+  light_purple:'#CC99CD',
+  purple:'#5C78C6',
+  orange:'#FE6D44',
+  coffee:'#AF7C49',
+  indigo:'#3F51B5',
+  blue:'#46788F',//316AAC
+  cyan:'#8DC7F9',
+  teal:'#159588',
+  green:'#2ECC71',
+  light_green:'#589A5F',
+  lime:'#BAE256',
+  yellow:'#F4C800',
+  dark:'#2D2D2D',
+  bg2:'#3E4A55',
+  bg:'#003837',
+ },
+ match = {
+  bg:'green',
+  bg2:'light_green',
+  dark:'light_purple',
+  coffee:'yellow',
+  orange:'dark',
+  red:'orange',
+  yellow:'white',
+  
+ };
+ var $header = $('.opening');
+ var bg = $header.data('headerbg')||'dark_grey';
+ $header.css('background-color',bgcolors[bg]);
+ //change title color
+ $header.css('color',bgcolors[ match[bg]? match[bg]:'white' ]);
+});</script></body><script>var disqus_shortname = 'true';
+(function () {
+    var s = document.createElement('script'); s.async = true;
+    s.type = 'text/javascript';
+    s.src = '//' + disqus_shortname + '.disqus.com/count.js';
+    (document.getElementsByTagName('HEAD')[0] || document.getElementsByTagName('BODY')[0]).appendChild(s);
+}());</script></html>

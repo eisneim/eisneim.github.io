@@ -1,0 +1,97 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><title>统计本地Git仓库中不同贡献者的代码行数的一些方法</title><meta name="description" content="dev blog about web development using Golang,javascript,nodejs,anuglarjs,mongodb and more."/><meta name="author" content="Eisneim Terry"/><meta name="handheldfriendly" content="true"/><meta name="mobileoptimized" content="320"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><meta http-equiv="cleartype" content="on"/><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/><link rel="stylesheet" href="/css/application.css"/><link rel="stylesheet" href="/lib/prism/themes/prism-tomorrow.css"/><script>//<![CDATA[
+WebFontConfig = {
+  google: { families: [ 'Source+Sans+Pro:400,600,900,400italic:latin' ] }
+};
+(function() {
+  var wf = document.createElement('script');
+  wf.src = ('https:' == document.location.protocol ? 'https' : 'http') +
+    '://ajax.googleapis.com/ajax/libs/webfont/1/webfont.js';
+  wf.type = 'text/javascript';
+  wf.async = 'true';
+  var s = document.getElementsByTagName('script')[0];
+  s.parentNode.insertBefore(wf, s);
+})();
+//]]></script></head><body><div data-headerbg="bg" class="opening"><header class="opening-header"><div class="container"><a href="/" class="opening-return">博客首页</a><h1 class="opening-title">统计本地Git仓库中不同贡献者的代码行数的一些方法</h1><time datetime="2014-8-16" class="opening-time">2014-8-16</time><a href="/articles" class="back">返回列表</a><a href="/" class="back">blog</a></div></header></div><div role="main" class="container"><p>github对代码的贡献者统计很棒，但是如果自己用vps搭建版本管理和部署代码，统计代码改动的详细情况则比较麻烦一些，下面我们将探讨对本地git仓库（或者你放在远程的）的一些统计方法。</p>
+<h2>简单的查看和统计</h2>
+<p>1.显示所有贡献者及其commit数</p>
+<pre><code>git shortlog --numbered --summary</code></pre>
+<p>2.只看某作者提交的commit：</p>
+<pre><code>git log --author=&quot;eisneim&quot; --oneline --shortstat</code></pre>
+<h2>显示行数的统计：</h2>
+<p>1.Mac，Linux下可以</p>
+<pre><code>git log --shortstat --pretty=&quot;%cE&quot; | sed &#39;s/\(.*\)@.*/\1/&#39; | grep -v &quot;^$&quot; | awk &#39;BEGIN { line=&quot;&quot;; } !/^ / { if (line==&quot;&quot; || !match(line, $0)) {line = $0 &quot;,&quot; line }} /^ / { print line &quot; # &quot; $0; line=&quot;&quot;}&#39; | sort | sed -E &#39;s/# //;s/ files? changed,//;s/([0-9]+) ([0-9]+ deletion)/\1 0 insertions\(+\), \2/;s/\(\+\)$/\(\+\), 0 deletions\(-\)/;s/insertions?\(\+\), //;s/ deletions?\(-\)//&#39; | awk &#39;BEGIN {name=&quot;&quot;; files=0; insertions=0; deletions=0;} {if ($1 != name &amp;&amp; name != &quot;&quot;) { print name &quot;: &quot; files &quot; 个文件被改变, &quot; insertions &quot; 行被插入(+), &quot; deletions &quot; 行被删除(-), &quot; insertions-deletions &quot; 行剩余&quot;; files=0; insertions=0; deletions=0; name=$1; } name=$1; files+=$2; insertions+=$3; deletions+=$4} END {print name &quot;: &quot; files &quot; 个文件被改变, &quot; insertions &quot; 行被插入(+), &quot; deletions &quot; 行被删除(-), &quot; insertions-deletions &quot; 行剩余&quot;;}&#39;</code></pre>
+<p>2.使用ruby</p>
+<pre><code>git ls-files -z | xargs -0n1 git blame -w | ruby -n -e &#39;$_ =~ /^.*\((.*?)\s[\d]{4}/; puts $1.strip&#39; | sort -f | uniq -c | sort -n</code></pre>
+<p>3.统计不同编程语言的行数
+这一点不是针对git仓库的，所有的项目都可以，这里我们使用的工具是：<a href="http://cloc.sourceforge.net/">cloc</a> (count lines of code)</p>
+<pre><code>//mac osx
+brew install cloc
+// linux 可以用yum或者apt安装，当然也可以自己make install
+
+//使用示例：
+cd my_project
+cloc ./ --exclude-dir=node_modules,public/lib,public/vendor,public/build --exclude-lang=CSS</code></pre>
+<h2>非常详细的统计</h2>
+<p>要想得到非常详细的统计，例如提交时间表，代码随时间的增长曲线等，可以使用<a href="https://github.com/trybeee/GitStats">gitstats</a></p>
+<pre><code>git clone git://github.com/hoxu/gitstats.git
+cd gitstats
+./gitstats 你的项目的位置 生成统计的文件夹位置</code></pre>
+<p>可能会提示没有安装gnplot画图程序，那么需要安装再执行：</p>
+<pre><code>//mac osx
+brew install gnplot
+//centos linux
+yum install gnplot</code></pre>
+<p>生成的统计文件为HTML：
+<img src="/images/post/2014-8-16-git.jpg" alt="result">
+通过图表发现，我们团队的另两人工作的非常疯狂，晚上1至3点是他们提交代码的高峰期，而早上10点之前提交的代码肯定是我写的。而在19点重来没有过commit，那是因为每天我在那个时候健身。</p>
+<ol class="post-nav"><a href="/articles/2014-11-25-jquery-free-snippets-with-javaScript.html" class="post-prev">用原生javascript代替jquery的一些代码片段</a><a href="/articles/2014-7-13_graduated_startup.html" class="post-next">艺高才能胆大——写在大学毕业后的半个月</a></ol></div><div class="comments"><div class="container"><div id="disqus_thread"></div><script>/* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+var disqus_shortname = 'true'; // required: replace example with your forum shortname
+
+/* * * DON'T EDIT BELOW THIS LINE * * */
+(function() {
+    var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+    dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+})();</script><noscript><p>Please enable JavaScript to view the comments.</p></noscript></div></div><footer role="contentinfo" class="footer"><p><a href="http://eisneim.com" target="_blank">Eisneim.com</a>&copy;2014. | <a href="http://weibo.com/eisneim" target="_blank">Weibo</a> | <a href="https://github.com/eisneim" target="_blank">Github</a> | Built with <a href="http://harpjs.com" target="_blank">Harp</a>. </p></footer><script src="/lib/jquery.js"></script><script src="/lib/prism/prism.js" data-default-language="markup"></script><script>$(function(){
+ var bgcolors = {
+  red:'#D84945',
+  white:'#fff',
+  pale:'#d1d1d1',
+  light_purple:'#CC99CD',
+  purple:'#5C78C6',
+  orange:'#FE6D44',
+  coffee:'#AF7C49',
+  indigo:'#3F51B5',
+  blue:'#46788F',//316AAC
+  cyan:'#8DC7F9',
+  teal:'#159588',
+  green:'#2ECC71',
+  light_green:'#589A5F',
+  lime:'#BAE256',
+  yellow:'#F4C800',
+  dark:'#2D2D2D',
+  bg2:'#3E4A55',
+  bg:'#003837',
+ },
+ match = {
+  bg:'green',
+  bg2:'light_green',
+  dark:'light_purple',
+  coffee:'yellow',
+  orange:'dark',
+  red:'orange',
+  yellow:'white',
+  
+ };
+ var $header = $('.opening');
+ var bg = $header.data('headerbg')||'dark_grey';
+ $header.css('background-color',bgcolors[bg]);
+ //change title color
+ $header.css('color',bgcolors[ match[bg]? match[bg]:'white' ]);
+});</script></body><script>var disqus_shortname = 'true';
+(function () {
+    var s = document.createElement('script'); s.async = true;
+    s.type = 'text/javascript';
+    s.src = '//' + disqus_shortname + '.disqus.com/count.js';
+    (document.getElementsByTagName('HEAD')[0] || document.getElementsByTagName('BODY')[0]).appendChild(s);
+}());</script></html>

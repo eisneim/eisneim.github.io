@@ -1,0 +1,105 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><title>精准周边生活广告——快递包裹的利用价值</title><meta name="description" content="dev blog about web development using Golang,javascript,nodejs,anuglarjs,mongodb and more."/><meta name="author" content="Eisneim Terry"/><meta name="handheldfriendly" content="true"/><meta name="mobileoptimized" content="320"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><meta http-equiv="cleartype" content="on"/><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/><link rel="stylesheet" href="/css/application.css"/><link rel="stylesheet" href="/lib/prism/themes/prism-tomorrow.css"/><script>//<![CDATA[
+WebFontConfig = {
+  google: { families: [ 'Source+Sans+Pro:400,600,900,400italic:latin' ] }
+};
+(function() {
+  var wf = document.createElement('script');
+  wf.src = ('https:' == document.location.protocol ? 'https' : 'http') +
+    '://ajax.googleapis.com/ajax/libs/webfont/1/webfont.js';
+  wf.type = 'text/javascript';
+  wf.async = 'true';
+  var s = document.getElementsByTagName('script')[0];
+  s.parentNode.insertBefore(wf, s);
+})();
+//]]></script></head><body><div data-headerbg="null" class="opening"><img src="/images/express-packeages-eisneim.com.jpg" alt="" class="opening-image"/><header class="opening-header"><div class="container"><a href="/" class="opening-return">博客首页</a><h1 class="opening-title">精准周边生活广告——快递包裹的利用价值</h1><time datetime="2014-7-7" class="opening-time">2014-7-7</time><a href="/articles" class="back">返回列表</a><a href="/" class="back">blog</a></div></header></div><div role="main" class="container"><p>.</p>
+<h2>痛点与需求</h2>
+<p>我所住的小区的电梯里写满了各种小广告，从上门取快递，到修门掏马桶零时工,各式各样的都有。作为住户，即觉得这些小广告实在是有碍观瞻但是不得不承认有时候这些广告还是很有用的，这不，昨天我专门跑到电梯里去找安装玻璃窗户的广告。这些广告的与其他传单广告的区别是他们更接地气，内容都与生活琐事有关，哪些写广告的人大多是这条街的小店有的还是本小区的住户。</p>
+<blockquote>
+<p>如果能够规范化地展示这广告，而不是把电梯墙面涂鸦的惨目忍睹的话，既能帮助让人民更容易接受，也能提高广告的转化率，还不至于“污染视野”，这是我看到这些广告的第一个想法；</p>
+</blockquote>
+<h2>灵感</h2>
+<p>在收快递签收的时候我忽然来了灵感，既然快递单子也是这样贴在包裹上的，那生活广告业同样能贴在快递包裹上呀。包裹广告的优势：</p>
+<ul>
+<li>99%的把握确定客户性别（看快递单上的名字）</li>
+<li>精确锁定客户地理位置</li>
+<li>比户外广告成本更低</li>
+<li>比在线广告更精确到客户住址的周边</li>
+</ul>
+<p>接下来要考虑的是如何规范化这些广告，整合周边生活广告的事情很多人也做过，比如我在大学的时候，寝室过一段时间就会被从门缝里塞入一本全是校园周边美食广告的“杂志”，是一个大学生团队做的，设计还不错，不过他们收集广告的范式比较类，得到店家一家一家的谈。有些报纸上也有生活广告板块，覆盖范围是一般式以城市为基本单位，那些最接地气的服务的广告肯定是无缘报纸广告的。</p>
+<h2>实施细节</h2>
+<h3>1.广告如何到包裹上去</h3>
+<p>最先想到到的是统一包装纸箱，但是这样成功略高；然后想到的是快递员在派送的时候给包裹套上一个印上广告的透明袋，但是在签收的时候不方便，广告袋势必会被斯卡然第一个扔掉；最好的方式应该是小贴纸广告，一个广告对应一张贴纸：</p>
+<ul>
+<li>能够更方便地根据性别和地址，贴对应的广告</li>
+<li>更有效的利用包裹的面积，除了快递单外的面积全部可以利用</li>
+<li>更便于客户收藏，客户根据自己的需求可以吧贴纸撕下来保存，而印在纸盒和广告袋没这么方便</li>
+</ul>
+<h3>2.如何收集广告</h3>
+<p>广告的内容限制在周边生活，主要是能够解决人们生活琐事的一些服务。那么最佳的如果当然是广告平台的手机应用（便于定位），广告主根据自己的服务的特点，选择目标客户的性别和所在街道或者小区，然后提供广告信息。利用地理位置，锁定方圆一公里的目标客户，对两者的好处都是不言而喻的。而对性别的锁定，让针对不同性别服务的广告有了更精确的投放。</p>
+<p>快递员第一次配送后在取得客户的统一后记录下客户的年龄段，方便二次快递投送的时候更加精确的广告匹配。</p>
+<p>为了更加规范化，对用户更有用。广告应该严格分类每个包裹的广告也应该涵盖生活各个方面，因此每个包裹不同类型的广告位的名额也相对固定，例如：一个包裹只能贴5个餐饮广告，2个家政广告，3个装修广告等。</p>
+<h3>3.客户会不会反感这些广告</h3>
+<p>大部分人并不会太在意，因为毕竟这些生活广告的信息对他们来说还是很有用的，而且这些广告有没有写在小区的电梯的墙上。人们反感广告的根本原因是：<code>过量无关信息</code>，如果一个大男人，天天收到什么‘无痛人流’‘30天丰胸’等广告，他心情h会好么？这些广告和他没有一毛钱关系。</p>
+<p>在第2个问题中我们规定每个包裹的广告必须涵盖指定的几个类别，不能只有一类广告，也就避免了这种过量无关信息的情况。而且有用户地址和性别作为判别标准，信息的实用性大大提升，更能解决客户的问题，那客户自然不会反感。</p>
+<p>但是总有那么一小部分客户会对所有广告保持敌意，为了照顾到这群人，最好网购支付页面提供选项是否愿意接受快递广告，接受广告的话能省几毛钱的“小惠”。或者，快递员每次在配送的时候同时询问并记录该用户是否愿意接受这些周边生活广告。</p>
+<h3>4.优化用户体验</h3>
+<p>在每个包裹上都贴上一个塑料小刀方便用户开启包裹，使用户开启包裹的时候更加方便。</p>
+<p>运送时间由于客观原因很难加快，所以优化快递员才是客户体验的关键，着装统一，礼貌待人的的快递员能够给人更好的感觉，即使包裹慢到了面对这笑脸也很难发火</p>
+<h2>商业模式</h2>
+<p>初期可以和一家小快递公司合作，我们负责广告平台，快递公司的配送员负责贴广告及对客户进行咨询记录。</p>
+<p>前期重在线下，收入主要来自广告主，与快递公司的分成比例要根据实际情况而定。</p>
+<p>中期重在线上，快递公司成为我们的雇员而不是直接分成，降低广告主的收费，扩大广告主数量，吧重心放在如何服务这些广大的“接地气”的广告主，并将他们详细分类，逐渐将纯线下的快递包裹转换成O2O模式，只要我们有了足够多的服务商，足够详细的分类，我们便可以做一个涵盖生活周边服务的在线服务预订平台，想象一下，拿着手机，直接预订，支付，10分钟后就有人来为你修门、开锁、掏马桶、修水管。。。。。家教、理发师、按摩师、甚至XXX（你懂得）都可以轻松预订+支付，比taskRabbit更快捷方便，这样的生活可不要太宅哦！</p>
+<p>中后期，开始逐渐脱离快递的广告贴纸，快递广告它存在的意义便是引入足够多的服务商（前期的广告主），而后期利用数量优势转型做平台，这也是常用的“互联网思维”。</p>
+<h2>结束语</h2>
+<p>我昨天有了灵感，今天早上便把它写了出来，很多不完善的地方，如果您有更好的建议和idea，请毫不犹豫地在评论中留言，我们可以一起探讨。</p>
+<ol class="post-nav"><a href="/articles/2014-7-12_mongodb_social-network_schema_design.html" class="post-prev">Mongodb开发社交类网站的Schema设计</a><a href="/articles/2014-7-6-use-git-for-production-deployement-on-vps.html" class="post-next">用git部署网站代码到生产环境VPS</a></ol></div><div class="comments"><div class="container"><div id="disqus_thread"></div><script>/* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+var disqus_shortname = 'true'; // required: replace example with your forum shortname
+
+/* * * DON'T EDIT BELOW THIS LINE * * */
+(function() {
+    var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+    dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+})();</script><noscript><p>Please enable JavaScript to view the comments.</p></noscript></div></div><footer role="contentinfo" class="footer"><p><a href="http://eisneim.com" target="_blank">Eisneim.com</a>&copy;2014. | <a href="http://weibo.com/eisneim" target="_blank">Weibo</a> | <a href="https://github.com/eisneim" target="_blank">Github</a> | Built with <a href="http://harpjs.com" target="_blank">Harp</a>. </p></footer><script src="/lib/jquery.js"></script><script src="/lib/prism/prism.js" data-default-language="markup"></script><script>$(function(){
+ var bgcolors = {
+  red:'#D84945',
+  white:'#fff',
+  pale:'#d1d1d1',
+  light_purple:'#CC99CD',
+  purple:'#5C78C6',
+  orange:'#FE6D44',
+  coffee:'#AF7C49',
+  indigo:'#3F51B5',
+  blue:'#46788F',//316AAC
+  cyan:'#8DC7F9',
+  teal:'#159588',
+  green:'#2ECC71',
+  light_green:'#589A5F',
+  lime:'#BAE256',
+  yellow:'#F4C800',
+  dark:'#2D2D2D',
+  bg2:'#3E4A55',
+  bg:'#003837',
+ },
+ match = {
+  bg:'green',
+  bg2:'light_green',
+  dark:'light_purple',
+  coffee:'yellow',
+  orange:'dark',
+  red:'orange',
+  yellow:'white',
+  
+ };
+ var $header = $('.opening');
+ var bg = $header.data('headerbg')||'dark_grey';
+ $header.css('background-color',bgcolors[bg]);
+ //change title color
+ $header.css('color',bgcolors[ match[bg]? match[bg]:'white' ]);
+});</script></body><script>var disqus_shortname = 'true';
+(function () {
+    var s = document.createElement('script'); s.async = true;
+    s.type = 'text/javascript';
+    s.src = '//' + disqus_shortname + '.disqus.com/count.js';
+    (document.getElementsByTagName('HEAD')[0] || document.getElementsByTagName('BODY')[0]).appendChild(s);
+}());</script></html>

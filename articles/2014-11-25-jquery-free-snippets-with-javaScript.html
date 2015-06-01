@@ -1,0 +1,159 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><title>用原生javascript代替jquery的一些代码片段</title><meta name="description" content="dev blog about web development using Golang,javascript,nodejs,anuglarjs,mongodb and more."/><meta name="author" content="Eisneim Terry"/><meta name="handheldfriendly" content="true"/><meta name="mobileoptimized" content="320"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><meta http-equiv="cleartype" content="on"/><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/><link rel="stylesheet" href="/css/application.css"/><link rel="stylesheet" href="/lib/prism/themes/prism-tomorrow.css"/><script>//<![CDATA[
+WebFontConfig = {
+  google: { families: [ 'Source+Sans+Pro:400,600,900,400italic:latin' ] }
+};
+(function() {
+  var wf = document.createElement('script');
+  wf.src = ('https:' == document.location.protocol ? 'https' : 'http') +
+    '://ajax.googleapis.com/ajax/libs/webfont/1/webfont.js';
+  wf.type = 'text/javascript';
+  wf.async = 'true';
+  var s = document.getElementsByTagName('script')[0];
+  s.parentNode.insertBefore(wf, s);
+})();
+//]]></script></head><body><div data-headerbg="blue" class="opening"><header class="opening-header"><div class="container"><a href="/" class="opening-return">博客首页</a><h1 class="opening-title">用原生javascript代替jquery的一些代码片段</h1><time datetime="2014-11-25" class="opening-time">2014-11-25</time><a href="/articles" class="back">返回列表</a><a href="/" class="back">blog</a></div></header></div><div role="main" class="container"><p>使用原生而不是jquery的好处是显而易见的，但是牺牲了对老浏览器的支持；但如果的项目使用angular或者其他老浏览器无法使用的技术，这个时候就没有必要再用jquery了； 以下是一些我整理的常用替换jquery的一些代码片段；如果你想知道更多细节，你可以访问：<a href="http://youmightnotneedjquery.com/">YouMightNotNeedjQuery.com</a></p>
+<h2>原生js与其他js框架的DOM操作速度对比</h2>
+<p><img src="/images/post/2014-11-25-js-speed.png" alt="js speed "></p>
+<h3>$(&#39;.elements&#39;) 类选择</h3>
+<pre><code class="language-javascript">    document.querySelectorAll(&#39;.elements&#39;);</code></pre>
+<h3>$(&#39;#elements&#39;) ID选择</h3>
+<pre><code class="language-javascript">    document.querySelector(&#39;#element&#39;);
+    document.getElementById(&quot;element&quot;);</code></pre>
+<h3>$(&#39;.elements,#id&#39;) 复合选择</h3>
+<pre><code class="language-javascript">    document.querySelectorAll(&quot;#element-ID, .element-class&quot;);</code></pre>
+<h3>其他选择</h3>
+<pre><code class="language-javascript">    //元素名选择
+    document.getElementsByTagName(&#39;span&#39;);
+
+    //子节点选择
+    document.querySelectorAll(&#39;.elements &gt; code&#39;);
+
+    //后代节点
+    document.querySelectorAll(&#39;.elements code&#39;);
+
+    //相邻兄弟节点
+    document.querySelectorAll(&#39;.element + *&#39;);
+
+    //相邻兄弟节点（确切）
+    document.querySelectorAll(&#39;.element + .next&#39;);
+
+    //所有兄弟节点（确切）
+    document.querySelectorAll(&#39;.element ~ .next&#39;);
+
+    //参数选择
+    document.querySelectorAll(&#39;code[data-selection=&quot;element&quot;]&#39;);
+
+    //获取body元素，$(&#39;body&#39;)
+    document.body
+
+    //获取整个HTML
+    document.documentElement</code></pre>
+<h3>一些element参数 可以不用 .attr(&#39;&#39;)</h3>
+<pre><code class="language-javascript">    var value = el.getAttribute(&#39;someName&#39;);
+    el.setAttribute(&#39;someName&#39;,&#39;value&#39;);
+    el.removeAttribute(&#39;someName&#39;)</code></pre>
+<p>不用getAttribute的参数：</p>
+<ul>
+<li><code>this.id</code> </li>
+<li><code>this.value</code> (input类的元素的值. IE 的option和Safari的radio没有.)</li>
+<li><code>this.className</code> 类名称</li>
+<li><code>this.selectedIndex</code> select 被选择的option的索引</li>
+<li><code>this.options</code> select元素的option列表</li>
+<li><code>this.text</code> option元素的文字内容</li>
+<li><code>this.rows</code> table 元素获取其tr元素</li>
+<li><code>this.cells</code> tr 元素获取其(td &amp; th)</li>
+<li><code>this.parentNode</code> 获取他上一级的父元素</li>
+<li><code>this.checked</code> checkbox元素是否被选择</li>
+<li><code>this.selected</code> option 是否被选择</li>
+<li><code>this.disabled</code> input 元素是否被禁止</li>
+<li><code>this.readOnly</code> input 元素是否只读</li>
+<li><code>this.href</code> a 元素的href参数</li>
+<li><code>this.hostname</code> a href的域名</li>
+<li><code>this.pathname</code> a href的域名后面的url</li>
+<li><code>this.search</code>a href中 ？后面的部分</li>
+<li><code>this.src</code> 拥有src参数的元素的src值</li>
+</ul>
+<h3>$el.data(&#39;attr&#39;) 获取data参数</h3>
+<pre><code class="language-javascript">    element.dataset[&#39;attr&#39;]</code></pre>
+<h3>$el.css(&#39;color&#39;,&#39;#fff&#39;) 设置样式</h3>
+<pre><code class="language-javascript">    element.style.color = &quot;#af7aa5&quot;;</code></pre>
+<h3>$el.addClass(&#39;name&#39;) 添加/删除类名称</h3>
+<pre><code class="language-javascript">    element.classList.add(&quot;name&quot;);
+    element.classList.remove(&quot;name&quot;);
+    element.classList.toggle(&#39;active&#39;);
+
+    或者改变 elem.className
+     elem.className += &#39; &#39; + className</code></pre>
+<h3>$.append(&#39;something&#39;) 追加内容</h3>
+<pre><code class="language-javascript">    element.innerHTML = element.innerHTML + &#39;sometthing&#39;;</code></pre>
+<h3>$(function(){ ... }) DOM/window加载完成</h3>
+<pre><code class="language-javascript">    document.addEventListener(&#39;DOMContentLoaded&#39;, function(){
+        // Do something
+    });
+
+    window.addEventListener(&#39;load&#39;, function(){
+        // Do something
+    });</code></pre>
+<h3>$(&#39;span&#39;).unwrap()</h3>
+<pre><code class="language-javascript">    var spans = document.getElementsByTagName(&#39;span&#39;);
+
+    while( spans[0] ) {
+        var parent = spans[0].parentNode;
+        while( spans[0].firstChild ) {
+            parent.insertBefore( spans[0].firstChild, spans[0]);
+        }
+        parent.removeChild( spans[0] );
+    }</code></pre>
+<h2>总结</h2>
+<p>能不用jquery就不要用jquery，先不说速度，毕竟jquery文件还有100多来k呢。</p>
+<ol class="post-nav"><a href="/articles/2014-12-3-nodejs_load_banlancer_using_http_proxy.html" class="post-prev">简单NodeJS负载均衡(逐次对多个node进程的HTTP代理)</a><a href="/articles/2014-8-16-git-analize-caulculate-contribution.html" class="post-next">统计本地Git仓库中不同贡献者的代码行数的一些方法</a></ol></div><div class="comments"><div class="container"><div id="disqus_thread"></div><script>/* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+var disqus_shortname = 'true'; // required: replace example with your forum shortname
+
+/* * * DON'T EDIT BELOW THIS LINE * * */
+(function() {
+    var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+    dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+})();</script><noscript><p>Please enable JavaScript to view the comments.</p></noscript></div></div><footer role="contentinfo" class="footer"><p><a href="http://eisneim.com" target="_blank">Eisneim.com</a>&copy;2014. | <a href="http://weibo.com/eisneim" target="_blank">Weibo</a> | <a href="https://github.com/eisneim" target="_blank">Github</a> | Built with <a href="http://harpjs.com" target="_blank">Harp</a>. </p></footer><script src="/lib/jquery.js"></script><script src="/lib/prism/prism.js" data-default-language="markup"></script><script>$(function(){
+ var bgcolors = {
+  red:'#D84945',
+  white:'#fff',
+  pale:'#d1d1d1',
+  light_purple:'#CC99CD',
+  purple:'#5C78C6',
+  orange:'#FE6D44',
+  coffee:'#AF7C49',
+  indigo:'#3F51B5',
+  blue:'#46788F',//316AAC
+  cyan:'#8DC7F9',
+  teal:'#159588',
+  green:'#2ECC71',
+  light_green:'#589A5F',
+  lime:'#BAE256',
+  yellow:'#F4C800',
+  dark:'#2D2D2D',
+  bg2:'#3E4A55',
+  bg:'#003837',
+ },
+ match = {
+  bg:'green',
+  bg2:'light_green',
+  dark:'light_purple',
+  coffee:'yellow',
+  orange:'dark',
+  red:'orange',
+  yellow:'white',
+  
+ };
+ var $header = $('.opening');
+ var bg = $header.data('headerbg')||'dark_grey';
+ $header.css('background-color',bgcolors[bg]);
+ //change title color
+ $header.css('color',bgcolors[ match[bg]? match[bg]:'white' ]);
+});</script></body><script>var disqus_shortname = 'true';
+(function () {
+    var s = document.createElement('script'); s.async = true;
+    s.type = 'text/javascript';
+    s.src = '//' + disqus_shortname + '.disqus.com/count.js';
+    (document.getElementsByTagName('HEAD')[0] || document.getElementsByTagName('BODY')[0]).appendChild(s);
+}());</script></html>

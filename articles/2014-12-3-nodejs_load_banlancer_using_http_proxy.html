@@ -1,0 +1,140 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><title>简单NodeJS负载均衡(逐次对多个node进程的HTTP代理)</title><meta name="description" content="dev blog about web development using Golang,javascript,nodejs,anuglarjs,mongodb and more."/><meta name="author" content="Eisneim Terry"/><meta name="handheldfriendly" content="true"/><meta name="mobileoptimized" content="320"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><meta http-equiv="cleartype" content="on"/><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/><link rel="stylesheet" href="/css/application.css"/><link rel="stylesheet" href="/lib/prism/themes/prism-tomorrow.css"/><script>//<![CDATA[
+WebFontConfig = {
+  google: { families: [ 'Source+Sans+Pro:400,600,900,400italic:latin' ] }
+};
+(function() {
+  var wf = document.createElement('script');
+  wf.src = ('https:' == document.location.protocol ? 'https' : 'http') +
+    '://ajax.googleapis.com/ajax/libs/webfont/1/webfont.js';
+  wf.type = 'text/javascript';
+  wf.async = 'true';
+  var s = document.getElementsByTagName('script')[0];
+  s.parentNode.insertBefore(wf, s);
+})();
+//]]></script></head><body><div data-headerbg="dark" class="opening"><header class="opening-header"><div class="container"><a href="/" class="opening-return">博客首页</a><h1 class="opening-title opening-title--long">简单NodeJS负载均衡(逐次对多个node进程的HTTP代理)</h1><time datetime="2014-12-3" class="opening-time">2014-12-3</time><a href="/articles" class="back">返回列表</a><a href="/" class="back">blog</a></div></header></div><div role="main" class="container"><p>如果你的server的cpu是多核的，或者你想你的nodejs后端更加的健壮，下面演示的使用http-proxy代理法或许对你有用，这种方法的基本思路就是多个node进程跑在不同的端口，而用户访问的是一个专门负责逐次指向多个node进程的代理服务进程(这个进程我们先用一个http-proxy来写，如何用nginx实现，容某谷歌谷歌，成功后再补上)。 如果这些进程跑在一台机器上，好处就是充分利用多核cpu，当然跑在局域网的不同机器的自然是为了减小访问压力，其实这样做也能提供更稳定的服务，一个进程down掉了，还有其他进程；</p>
+<h2>第一步：安装http-proxy 模块</h2>
+<pre><code>//我用的时1.7.0的，如果是0.8版本的写法不一样，请参考其readme
+npm install http-proxy</code></pre>
+<p>这个http-proxy不仅可以做HTTP和HTTPS的代理，还可以做websocket代理！</p>
+<h2>第二步：写个简单HTTP服务：app.js</h2>
+<pre><code class="language-javascript">var http = require(&#39;http&#39;);
+
+http.createServer(function(req,res){
+    res.end(&#39;来自 &#39;+ process.argv[2] +&#39;端口的app的回应\n&#39;);
+}).listen(process.argv[2] )</code></pre>
+<p>接下来，我们分别在8081，8082，8083端口上运行三个nodejs进程：</p>
+<pre><code>node app.js 8081 &amp;
+node app.js 8082 &amp;
+node app.js 8083 &amp;
+// 结尾处的&amp; 代表着：以后台任务模式运行该程序，以下指令或许对你有用(我没在win机器上试过)
+//显示所有后台进程：jobs
+//把最近创建的后台任务变成普通进程：fg
+//把普通进程变成后台任务：CTRL+z</code></pre>
+<h2>第三步：talk is cheap, show me the code!</h2>
+<p>创建一个server.js来作为我们的代理服务器</p>
+<pre><code class="language-javascript">var httpProxy = require(&#39;http-proxy&#39;),//https://www.npmjs.org/package/http-proxy
+    http = require(&#39;http&#39;);
+
+// localhost换成本地网络的其他机器即可实现多机器的负载均衡
+var servers = [
+    &#39;http://localhost:8081&#39;,
+    &#39;http://localhost:8082&#39;,
+    &#39;http://localhost:8083&#39;,
+];
+
+var proxy = httpProxy.createProxyServer({});
+
+//自定义我们的代理服务器的逻辑
+var proxyServer = http.createServer(function(req,res){
+    //获取第一个server
+    var target = servers.shift();
+    //将HTTP请求传递给目标node进程
+    proxy.web(req,res,{target: target });
+
+    //将第一个server放在末尾，以实现循环地指向不同进程
+    servers.push(target);
+
+});
+
+proxyServer.listen(8080);
+
+proxy.on(&#39;error&#39;, function(err, req, res) {
+    res.send(&#39;some err happend....&#39;+err);
+});
+
+/*
+    websocket代理!! 服务器如果接受到一个‘upgrade’事件，
+    则表明这个链接请求是websocket请求
+
+    ！！！attention！！！
+    websocket的代理我还没有测试过
+
+    更多细节：http://stackoverflow.com/questions/15266702/proxying-websockets-with-tcp-load-balancer-without-sticky-sessions
+*/
+proxyServer.on(&#39;upgrade&#39;, function (req, socket, head) {
+    var target = servers.shift();// remove first array and set that removed as target;
+
+     proxy.ws(req, socket, head,{target:target.replace(&#39;http&#39;,&#39;ws&#39;)});
+
+     servers.push(target);
+
+});</code></pre>
+<p>ok，接下来我们就可以来测试以下了，首先运行这个代理服务器：</p>
+<pre><code>node server.js
+//然后我们可以在另一个命令行窗口用curl测试，或者在浏览器中访问：localhost:8080
+curl -X GET localhost:8080</code></pre>
+<p>我们可以看到响应来自不同的进程，我们的简单的负载均衡代理服务器就是这么容易的实现了！</p>
+<h1>结论</h1>
+<p>你甚至可以这样做，用nginx 代理某个域名到这个辅助负载均衡的代理服务器，然后用forever 来运行你的app.js, 这样更能保证你的app的稳定性。 </p>
+<p>值得注意的一点是，session或者记录用户什么的放在内存的话这样多个进程之间不能交流会出现问题，所以建议将session等记录用户的数据放到redis，mongo，memcached或其他东西里面；以后等我遇到数据库性能瓶颈了我们再来讨论如何做mongodb的负载均衡的两个built-in的方法吧，take care and happy coding, bye!</p>
+<ol class="post-nav"><a href="/articles/2015-1-1-new_year_plan.html" class="post-prev">2015年的计划</a><a href="/articles/2014-11-25-jquery-free-snippets-with-javaScript.html" class="post-next">用原生javascript代替jquery的一些代码片段</a></ol></div><div class="comments"><div class="container"><div id="disqus_thread"></div><script>/* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+var disqus_shortname = 'true'; // required: replace example with your forum shortname
+
+/* * * DON'T EDIT BELOW THIS LINE * * */
+(function() {
+    var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+    dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+})();</script><noscript><p>Please enable JavaScript to view the comments.</p></noscript></div></div><footer role="contentinfo" class="footer"><p><a href="http://eisneim.com" target="_blank">Eisneim.com</a>&copy;2014. | <a href="http://weibo.com/eisneim" target="_blank">Weibo</a> | <a href="https://github.com/eisneim" target="_blank">Github</a> | Built with <a href="http://harpjs.com" target="_blank">Harp</a>. </p></footer><script src="/lib/jquery.js"></script><script src="/lib/prism/prism.js" data-default-language="markup"></script><script>$(function(){
+ var bgcolors = {
+  red:'#D84945',
+  white:'#fff',
+  pale:'#d1d1d1',
+  light_purple:'#CC99CD',
+  purple:'#5C78C6',
+  orange:'#FE6D44',
+  coffee:'#AF7C49',
+  indigo:'#3F51B5',
+  blue:'#46788F',//316AAC
+  cyan:'#8DC7F9',
+  teal:'#159588',
+  green:'#2ECC71',
+  light_green:'#589A5F',
+  lime:'#BAE256',
+  yellow:'#F4C800',
+  dark:'#2D2D2D',
+  bg2:'#3E4A55',
+  bg:'#003837',
+ },
+ match = {
+  bg:'green',
+  bg2:'light_green',
+  dark:'light_purple',
+  coffee:'yellow',
+  orange:'dark',
+  red:'orange',
+  yellow:'white',
+  
+ };
+ var $header = $('.opening');
+ var bg = $header.data('headerbg')||'dark_grey';
+ $header.css('background-color',bgcolors[bg]);
+ //change title color
+ $header.css('color',bgcolors[ match[bg]? match[bg]:'white' ]);
+});</script></body><script>var disqus_shortname = 'true';
+(function () {
+    var s = document.createElement('script'); s.async = true;
+    s.type = 'text/javascript';
+    s.src = '//' + disqus_shortname + '.disqus.com/count.js';
+    (document.getElementsByTagName('HEAD')[0] || document.getElementsByTagName('BODY')[0]).appendChild(s);
+}());</script></html>

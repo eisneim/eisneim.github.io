@@ -1,0 +1,107 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><title>用git部署网站代码到生产环境VPS</title><meta name="description" content="dev blog about web development using Golang,javascript,nodejs,anuglarjs,mongodb and more."/><meta name="author" content="Eisneim Terry"/><meta name="handheldfriendly" content="true"/><meta name="mobileoptimized" content="320"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><meta http-equiv="cleartype" content="on"/><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/><link rel="stylesheet" href="/css/application.css"/><link rel="stylesheet" href="/lib/prism/themes/prism-tomorrow.css"/><script>//<![CDATA[
+WebFontConfig = {
+  google: { families: [ 'Source+Sans+Pro:400,600,900,400italic:latin' ] }
+};
+(function() {
+  var wf = document.createElement('script');
+  wf.src = ('https:' == document.location.protocol ? 'https' : 'http') +
+    '://ajax.googleapis.com/ajax/libs/webfont/1/webfont.js';
+  wf.type = 'text/javascript';
+  wf.async = 'true';
+  var s = document.getElementsByTagName('script')[0];
+  s.parentNode.insertBefore(wf, s);
+})();
+//]]></script></head><body><div data-headerbg="bg" class="opening"><header class="opening-header"><div class="container"><a href="/" class="opening-return">博客首页</a><h1 class="opening-title">用git部署网站代码到生产环境VPS</h1><time datetime="2014-7-6" class="opening-time">2014-7-6</time><a href="/articles" class="back">返回列表</a><a href="/" class="back">blog</a></div></header></div><div role="main" class="container"><p>做web开发时，以前都是写好了一个新功能要发布到服务器上都是使用FTP上传覆盖原来的代码，这样做很麻烦，首先要打开FTP程序，然后进入指定文件夹，然后上传，而且用FTP上传经常容易出错总是有个别文件会因为权限或者各种奇葩的原因上传失败。。。。。。用git来部署就不会有这样的问题。</p>
+<p>如果你的项目是一个团队在做，可能还需要一个公共仓库如Github或者GitCafe，git.oschina.net,git.csdn.net等，使用他们也可以部署到远程的服务器。方法是，设置GitHub等的hook（国内git网站叫push钩子），它的作用是，每次我们从本地push改变到这些仓库时，这些仓库会向指定连接（例如自己的vps服务器）发生post请求（不止一种请求，但常用post请求，请求的内容也因仓库不同而不同），我们可以设置自己的vps生产服务器一旦接收到这个post请求就开始部署，可以写bash脚本或者Python脚本实现，或者直接网上找别人写好的。</p>
+<p>还有另一种方法则是不适用公共仓库来发生hook而是直接使用vps生产服务器来做这些事情（代码管理+部署生产环境的代码），下文便讨论如何实现。</p>
+<h2>创建自己的仓库</h2>
+<pre><code>cd /var
+mkdir git &amp;&amp; cd git
+mkdir your_site.git &amp;&amp; cd your_site.git
+git init --bare</code></pre>
+<p>--bare的意思是，该文件夹是我们的代码仓库，它将不会放源代码而只是做版本控制。</p>
+<h2>Hook钩子</h2>
+<p>我们将会使用post-receive钩子，更多钩子及含义可以参考<a href="http://git-scm.com/book/en/Customizing-Git-Git-Hooks">git文档</a>
+在your_site.git文件夹中</p>
+<pre><code>ls</code></pre>
+<p>你可以看到有hooks文件夹已经为我们创建好了,而且里面也有各种钩子的样例</p>
+<pre><code>cd hooks</code></pre>
+<p>创建我们自己的post-receive</p>
+<pre><code>cat &gt; post-receive</code></pre>
+<p>按回车后提示我们继续输入，接下来输入的动向都会被放入post-receive文件中。</p>
+<pre><code>#!/bin/sh
+git --work-tree=生产环境网站文件夹位置 --git-dir=/var/git/your_site.git checkout -f
+
+//我自己的Nodejs项目还会添加：
+cd 网站文件夹位置
+gulp build
+forever restart server.js</code></pre>
+<p>输入完成后按<code>ctrl + D</code> 保存，<code>git-dir</code>指的是仓库的地址， <code>work-tree</code>则是存放代码的位置，也就是我们的网站的源代码的位置。
+接下来则是要保证它可以运行：</p>
+<pre><code>chmod +x post-receive</code></pre>
+<h2>本地</h2>
+<p>一般情况是你已经有了自己的git项目了，那么只需要添加vps的仓库地址就行了</p>
+<pre><code>git remote add myVPS-sitename ssh://user@mydomain.com/var/git/your_site.git</code></pre>
+<p>&#39;myVPS-sitename&#39;只是这个远程连接的名称，你可以同时有多个远程连接，每次push的时候指定名称即可将代码上传到不同的仓库。</p>
+<p>如果你本地还没有项目代码：</p>
+<pre><code>cd 项目地址
+git init</code></pre>
+<p>添加一个README.ME文件后</p>
+<pre><code>git add .
+git commit -m &quot;项目初始&quot;</code></pre>
+<p>接下来我们便可以将代码push到vps了：</p>
+<pre><code>git push myVPS-sitename master</code></pre>
+<p><code>master</code>指定的是master分支，如果你有其他分支也可以push其他分支。.</p>
+<h2>总结</h2>
+<p>这只是最基本的设置，利用hook结合一些自己编写的脚本我们还可以做很多事情。</p>
+<ol class="post-nav"><a href="/articles/2014-7-7-express-advertisement.html" class="post-prev">精准周边生活广告——快递包裹的利用价值</a><a href="/articles/2014-7-5-meaning-of-npm-bower-version-prefix.html" class="post-next">NPM和Bower的版本指定方法和含义</a></ol></div><div class="comments"><div class="container"><div id="disqus_thread"></div><script>/* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+var disqus_shortname = 'true'; // required: replace example with your forum shortname
+
+/* * * DON'T EDIT BELOW THIS LINE * * */
+(function() {
+    var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+    dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+})();</script><noscript><p>Please enable JavaScript to view the comments.</p></noscript></div></div><footer role="contentinfo" class="footer"><p><a href="http://eisneim.com" target="_blank">Eisneim.com</a>&copy;2014. | <a href="http://weibo.com/eisneim" target="_blank">Weibo</a> | <a href="https://github.com/eisneim" target="_blank">Github</a> | Built with <a href="http://harpjs.com" target="_blank">Harp</a>. </p></footer><script src="/lib/jquery.js"></script><script src="/lib/prism/prism.js" data-default-language="markup"></script><script>$(function(){
+ var bgcolors = {
+  red:'#D84945',
+  white:'#fff',
+  pale:'#d1d1d1',
+  light_purple:'#CC99CD',
+  purple:'#5C78C6',
+  orange:'#FE6D44',
+  coffee:'#AF7C49',
+  indigo:'#3F51B5',
+  blue:'#46788F',//316AAC
+  cyan:'#8DC7F9',
+  teal:'#159588',
+  green:'#2ECC71',
+  light_green:'#589A5F',
+  lime:'#BAE256',
+  yellow:'#F4C800',
+  dark:'#2D2D2D',
+  bg2:'#3E4A55',
+  bg:'#003837',
+ },
+ match = {
+  bg:'green',
+  bg2:'light_green',
+  dark:'light_purple',
+  coffee:'yellow',
+  orange:'dark',
+  red:'orange',
+  yellow:'white',
+  
+ };
+ var $header = $('.opening');
+ var bg = $header.data('headerbg')||'dark_grey';
+ $header.css('background-color',bgcolors[bg]);
+ //change title color
+ $header.css('color',bgcolors[ match[bg]? match[bg]:'white' ]);
+});</script></body><script>var disqus_shortname = 'true';
+(function () {
+    var s = document.createElement('script'); s.async = true;
+    s.type = 'text/javascript';
+    s.src = '//' + disqus_shortname + '.disqus.com/count.js';
+    (document.getElementsByTagName('HEAD')[0] || document.getElementsByTagName('BODY')[0]).appendChild(s);
+}());</script></html>

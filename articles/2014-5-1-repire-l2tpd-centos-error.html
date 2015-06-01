@@ -1,0 +1,375 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><title>CentOS 修复一键安装l2tpd+pptpd遇到的问题</title><meta name="description" content="dev blog about web development using Golang,javascript,nodejs,anuglarjs,mongodb and more."/><meta name="author" content="Eisneim Terry"/><meta name="handheldfriendly" content="true"/><meta name="mobileoptimized" content="320"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><meta http-equiv="cleartype" content="on"/><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/><link rel="stylesheet" href="/css/application.css"/><link rel="stylesheet" href="/lib/prism/themes/prism-tomorrow.css"/><script>//<![CDATA[
+WebFontConfig = {
+  google: { families: [ 'Source+Sans+Pro:400,600,900,400italic:latin' ] }
+};
+(function() {
+  var wf = document.createElement('script');
+  wf.src = ('https:' == document.location.protocol ? 'https' : 'http') +
+    '://ajax.googleapis.com/ajax/libs/webfont/1/webfont.js';
+  wf.type = 'text/javascript';
+  wf.async = 'true';
+  var s = document.getElementsByTagName('script')[0];
+  s.parentNode.insertBefore(wf, s);
+})();
+//]]></script></head><body><div data-headerbg="bg" class="opening"><header class="opening-header"><div class="container"><a href="/" class="opening-return">博客首页</a><h1 class="opening-title">CentOS 修复一键安装l2tpd+pptpd遇到的问题</h1><time datetime="2014-05-01" class="opening-time">2014-05-01</time><a href="/articles" class="back">返回列表</a><a href="/" class="back">blog</a></div></header></div><div role="main" class="container"><p>在buyvm和digitalocean的centos上都遇到了安装l2tpd后连接不上的问题，无论是逐步安装还是使用一键安装脚本都不行，折腾了大半天终于搞定。一键安装脚本在最下面。</p>
+<p>首先要确保<code>/etc/sysctl.conf</code> 如下设置</p>
+<pre><code>net.ipv4.ip_forward = 1
+
+net.ipv4.conf.all.send_redirects = 0
+net.ipv4.conf.all.accept_redirects = 0
+net.ipv4.conf.default.send_redirects = 0
+net.ipv4.conf.default.accept_redirects = 0</code></pre>
+<p>修改好了要重启sysctl</p>
+<pre><code>sysctl -p</code></pre>
+<p>检查一下ipsec的状态，确保没有[faild]或者错误，如果有先试试<code>service ipsec restart</code>,再verify</p>
+<pre><code>ipsec verify</code></pre>
+<p>如果有错误，谷歌一下就能解决。然后创建xl2tpd重启脚本:</p>
+<pre><code>nano /etc/init.d/xl2tpd</code></pre>
+<p>脚本内容如下</p>
+<pre><code class="language-bash">
+#!/bin/sh
+#
+# xl2tpd This shell script takes care of starting and stopping l2tpd.
+#
+# chkconfig: – 80 30
+# description: Layer 2 Tunnelling Protocol Daemon (RFC 2661)
+#
+# processname: xl2tpd
+# config: /etc/xl2tpd/xl2tpd.conf
+# pidfile: /var/run/xl2tpd.pid
+#Servicename
+SERVICE=xl2tpd
+# Source function library.
+. /etc/rc.d/init.d/functions
+# Source networking configuration.
+. /etc/sysconfig/network
+if [ ${NETWORKING} = &quot;no&quot; ]
+then
+    exit 0
+fi
+[ -x /usr/local/sbin/$SERVICE ] || exit 0
+RETVAL=0
+
+start() {
+    echo -n &quot;Restarting IPSec: &quot;
+    service ipsec restart
+
+    echo -n &quot;Starting $SERVICE: &quot;
+    if [ ! -d /var/run/xl2tpd ]
+    then
+        mkdir /var/run/xl2tpd
+    fi
+    daemon /usr/local/sbin/$SERVICE
+    RETVAL=$?
+    [ $RETVAL -eq 0 ] &amp;&amp; touch /var/lock/subsys/$SERVICE
+    echo &quot;&quot;
+    return $RETVAL
+}
+
+stop() {
+    echo -n &quot;Stopping $SERVICE: &quot;
+    killproc $SERVICE
+    RETVAL=$?
+    echo
+    [ $RETVAL -eq 0 ] &amp;&amp; rm -f /var/lock/subsys/$SERVICE
+    return $RETVAL
+}
+
+restart() {
+    stop
+    start
+}
+# See how we were called.
+case &quot;$1&quot; in
+  start)
+    start
+    ;;
+  stop)
+    stop
+    ;;
+  status)
+    status $SERVICE
+    RETVAL=$?
+    ;;
+  restart|reload)
+    restart
+    ;;
+  condrestart)
+    [ -f /var/lock/subsys/$SERVICE ] &amp;&amp; restart || :
+    ;;
+  *)
+    echo &quot;Usage: $SERVICE {start|stop|status|restart|reload|condrestart}&quot;
+    exit 1
+esac</code></pre>
+<p>然后修改运行权限</p>
+<pre><code>chmod 777 /etc/init.d/xl2tpd</code></pre>
+<p>然后重启：</p>
+<pre><code>service xl2tpd restart</code></pre>
+<p>很奇怪重启之后就可以连接上了。如果要添加新用户只需修改 /etc/ppp/chap-secrets</p>
+<pre><code>#  user  server   pass    IP
+l2tpuser  xl2tpd   l2tppass  *</code></pre>
+<h2>pptp-l2tp.sh安装脚本</h2>
+<pre><code class="language-bash">#!/bin/bash
+clear
+if [ $(id -u) != &quot;0&quot; ]; then
+    printf &quot;Error: You must be root to run this tool!\n&quot;
+    exit 1
+fi
+
+host_ip=`ifconfig eth0 | awk &#39;/inet addr/ {print $2}&#39; | awk -F &#39;:&#39; &#39;{print $2}&#39;`
+cur_dir=`pwd`
+read -p &quot;(Please input PSK: )&quot; psk
+if [ &quot;$psk&quot; = &quot;&quot; ]; then
+        psk=&quot;fuck高墙&quot;
+fi
+
+read -p &quot;Enter vpn username: &quot; username
+if [ &quot;$username&quot; = &quot;&quot; ];then
+        username=&quot;vpn&quot;
+fi
+
+read -p &quot;Enter vpn password: &quot; userpsw
+if [ &quot;$userpsw&quot; = &quot;&quot; ];then
+        userpsw=&quot;vpn&quot;
+fi
+
+clear
+get_char()
+{
+SAVEDSTTY=`stty -g`
+stty -echo
+stty cbreak
+dd if=/dev/tty bs=1 count=1 2&gt; /dev/null
+stty -raw
+stty echo
+stty $SAVEDSTTY
+}
+echo &quot;&quot;
+echo &quot;ServerIP:&quot;
+echo &quot;$host_ip&quot;
+echo &quot;&quot;
+echo &quot;PSK:&quot;
+echo &quot;$psk&quot;
+echo &quot;&quot;
+echo &quot;VPN Account:&quot;
+echo &quot;$username&quot;
+echo &quot;&quot;
+echo &quot;Account Password:&quot;
+echo &quot;$userpsw&quot;
+echo &quot;&quot;
+echo &quot;Press any key to start...&quot;
+char=`get_char`
+clear
+
+yum -y update
+yum remove  -y pptpd ppp
+yum install -y make gcc gmp-devel bison flex libpcap-devel ppp lsof perl iptables 
+yum install -y libpcap gcc-c++ logrotate tar cpio pam tcp_wrappers
+
+wget http://fastlnmp.googlecode.com/files/dkms-2.0.17.5-1.noarch.rpm
+wget http://fastlnmp.googlecode.com/files/kernel_ppp_mppe-1.0.2-3dkms.noarch.rpm
+wget http://fastlnmp.googlecode.com/files/pptpd-1.3.4-1.rhel5.1.i386.rpm
+
+rpm -ivh dkms-2.0.17.5-1.noarch.rpm
+rpm -ivh kernel_ppp_mppe-1.0.2-3dkms.noarch.rpm
+rpm -qa kernel_ppp_mppe
+rpm -ivh pptpd-1.3.4-1.rhel5.1.i386.rpm
+
+
+wget http://www.openswan.org/download/openswan-2.6.34.tar.gz
+tar zxvf openswan-2.6.34.tar.gz
+cd openswan-2.6.34/
+make programs install
+cd ../
+
+cat &gt; /etc/ipsec.conf &lt;&lt;EOF
+version 2.0
+config setup
+    nat_traversal=yes
+    virtual_private=%v4:10.0.0.0/8,%v4:192.168.0.0/16,%v4:172.16.0.0/12
+    oe=off
+    protostack=netkey
+
+conn L2TP-PSK-NAT
+    rightsubnet=vhost:%priv
+    also=L2TP-PSK-noNAT
+
+conn L2TP-PSK-noNAT
+    authby=secret
+    pfs=no
+    auto=add
+    keyingtries=3
+    rekey=no
+    ikelifetime=8h
+    keylife=1h
+    type=transport
+    left=$host_ip
+    leftprotoport=17/1701
+    right=%any
+    rightprotoport=17/%any
+EOF
+
+cat &gt; /etc/ipsec.secrets &lt;&lt;EOF
+$host_ip %any: PSK &quot;$psk&quot;
+EOF
+
+for each in /proc/sys/net/ipv4/conf/*
+do
+echo 0 &gt; $each/accept_redirects
+echo 0 &gt; $each/send_redirects
+done
+echo 1 &gt; /proc/sys/net/core/xfrm_larval_drop
+iptables --table nat --append POSTROUTING -o eth0 --jump MASQUERADE 
+
+service iptables save
+service iptables restart
+chkconfig iptables on
+
+sed -i &#39;s/net.ipv4.ip_forward = 0/net.ipv4.ip_forward = 1/g&#39; /etc/sysctl.conf
+sysctl -p
+
+/etc/init.d/ipsec restart
+ipsec verify
+
+cd $cur_dir
+wget http://downloads.sourceforge.net/project/rp-l2tp/rp-l2tp/0.4/rp-l2tp-0.4.tar.gz
+tar zxvf rp-l2tp-0.4.tar.gz
+cd rp-l2tp-0.4
+./configure
+make
+cp handlers/l2tp-control /usr/local/sbin/
+mkdir /var/run/xl2tpd/
+ln -s /usr/local/sbin/l2tp-control /var/run/xl2tpd/l2tp-control
+
+cd $cur_dir
+wget  http://fastlnmp.googlecode.com/files/xl2tpd-1.2.8.tar
+tar zxvf xl2tpd-1.2.8.tar
+cd xl2tpd-1.2.8
+make install
+cd ..
+
+mkdir -p /etc/xl2tpd
+touch /etc/xl2tpd/xl2tpd.conf
+cat &gt;&gt; /etc/xl2tpd/xl2tpd.conf &lt;&lt;EOF
+[global]
+ipsec saref = yes
+
+[lns default]
+ip range = 10.85.91.10-10.85.91.254
+local ip = 10.85.91.1
+refuse chap = yes
+refuse pap = yes
+require authentication = yes
+ppp debug = yes
+pppoptfile = /etc/ppp/options.xl2tpd
+length bit = yes
+EOF
+
+touch /etc/ppp/options.xl2tpd
+cat &gt;&gt; /etc/ppp/options.xl2tpd &lt;&lt;EOF
+require-mschap-v2
+ms-dns 8.8.8.8
+ms-dns 8.8.4.4
+asyncmap 0
+auth
+crtscts
+lock
+hide-password
+modem
+debug
+name l2tpd
+proxyarp
+lcp-echo-interval 30
+lcp-echo-failure 4
+EOF
+
+mknod /dev/ppp c 108 0 
+echo &quot;localip 10.85.92.1&quot; &gt;&gt; /etc/pptpd.conf
+echo &quot;remoteip 10.85.92.10-254&quot; &gt;&gt; /etc/pptpd.conf
+echo &quot;ms-dns 8.8.8.8&quot; &gt;&gt; /etc/ppp/options.pptpd
+echo &quot;ms-dns 8.8.4.4&quot; &gt;&gt; /etc/ppp/options.pptpd
+
+chkconfig pptpd on
+service pptpd restart
+
+echo &quot;$username l2tpd $userpsw *&quot; &gt;&gt; /etc/ppp/chap-secrets
+echo &quot;$username pptpd $userpsw *&quot; &gt;&gt; /etc/ppp/chap-secrets
+/usr/local/sbin/xl2tpd
+
+cat &gt;&gt; /etc/rc.local &lt;&lt;EOF
+mknod /dev/ppp c 108 0
+for each in /proc/sys/net/ipv4/conf/*
+do
+        echo 0 &gt; \$each/accept_redirects
+        echo 0 &gt; \$each/send_redirects
+done
+echo 1 &gt; /proc/sys/net/core/xfrm_larval_drop
+/etc/init.d/ipsec restart
+/usr/local/sbin/xl2tpd
+EOF
+
+clear
+
+ipsec verify
+
+printf &quot;
+if there are no [FAILED] above, then you can
+connect to your L2TP&amp;PPTP VPN Server with the default
+user/pass below:
+
+ServerIP:$host_ip
+username:$username
+password:$userpsw
+PSK:$psk (for L2TP VPN)
+&quot;</code></pre>
+<ol class="post-nav"><a href="/articles/2014-7-4-dynamic-title-for-angular-app.html" class="post-prev">angularJS应用改变路由时动态改变页面标题的不同方法</a><a href="/articles/2014-4-28-nodejs-socket-io-on-nginx.html" class="post-next">利用Nginx代理NodeJS+socket.io</a></ol></div><div class="comments"><div class="container"><div id="disqus_thread"></div><script>/* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+var disqus_shortname = 'true'; // required: replace example with your forum shortname
+
+/* * * DON'T EDIT BELOW THIS LINE * * */
+(function() {
+    var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+    dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+})();</script><noscript><p>Please enable JavaScript to view the comments.</p></noscript></div></div><footer role="contentinfo" class="footer"><p><a href="http://eisneim.com" target="_blank">Eisneim.com</a>&copy;2014. | <a href="http://weibo.com/eisneim" target="_blank">Weibo</a> | <a href="https://github.com/eisneim" target="_blank">Github</a> | Built with <a href="http://harpjs.com" target="_blank">Harp</a>. </p></footer><script src="/lib/jquery.js"></script><script src="/lib/prism/prism.js" data-default-language="markup"></script><script>$(function(){
+ var bgcolors = {
+  red:'#D84945',
+  white:'#fff',
+  pale:'#d1d1d1',
+  light_purple:'#CC99CD',
+  purple:'#5C78C6',
+  orange:'#FE6D44',
+  coffee:'#AF7C49',
+  indigo:'#3F51B5',
+  blue:'#46788F',//316AAC
+  cyan:'#8DC7F9',
+  teal:'#159588',
+  green:'#2ECC71',
+  light_green:'#589A5F',
+  lime:'#BAE256',
+  yellow:'#F4C800',
+  dark:'#2D2D2D',
+  bg2:'#3E4A55',
+  bg:'#003837',
+ },
+ match = {
+  bg:'green',
+  bg2:'light_green',
+  dark:'light_purple',
+  coffee:'yellow',
+  orange:'dark',
+  red:'orange',
+  yellow:'white',
+  
+ };
+ var $header = $('.opening');
+ var bg = $header.data('headerbg')||'dark_grey';
+ $header.css('background-color',bgcolors[bg]);
+ //change title color
+ $header.css('color',bgcolors[ match[bg]? match[bg]:'white' ]);
+});</script></body><script>var disqus_shortname = 'true';
+(function () {
+    var s = document.createElement('script'); s.async = true;
+    s.type = 'text/javascript';
+    s.src = '//' + disqus_shortname + '.disqus.com/count.js';
+    (document.getElementsByTagName('HEAD')[0] || document.getElementsByTagName('BODY')[0]).appendChild(s);
+}());</script></html>

@@ -1,0 +1,103 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><title>安装MAC使用GUID分区出现boot0:test boot0:error</title><meta name="description" content="dev blog about web development using Golang,javascript,nodejs,anuglarjs,mongodb and more."/><meta name="author" content="Eisneim Terry"/><meta name="handheldfriendly" content="true"/><meta name="mobileoptimized" content="320"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><meta http-equiv="cleartype" content="on"/><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/><link rel="stylesheet" href="/css/application.css"/><link rel="stylesheet" href="/lib/prism/themes/prism-tomorrow.css"/><script>//<![CDATA[
+WebFontConfig = {
+  google: { families: [ 'Source+Sans+Pro:400,600,900,400italic:latin' ] }
+};
+(function() {
+  var wf = document.createElement('script');
+  wf.src = ('https:' == document.location.protocol ? 'https' : 'http') +
+    '://ajax.googleapis.com/ajax/libs/webfont/1/webfont.js';
+  wf.type = 'text/javascript';
+  wf.async = 'true';
+  var s = document.getElementsByTagName('script')[0];
+  s.parentNode.insertBefore(wf, s);
+})();
+//]]></script></head><body><div data-headerbg="bg2" class="opening"><header class="opening-header"><div class="container"><a href="/" class="opening-return">博客首页</a><h1 class="opening-title opening-title--long">安装MAC使用GUID分区出现boot0:test boot0:error</h1><time datetime="2013-2-12" class="opening-time">2013-2-12</time><a href="/articles" class="back">返回列表</a><a href="/" class="back">blog</a></div></header></div><div role="main" class="container"><blockquote>
+<p>安装MAC使用GPT(GUID)分区出现boot0:test boot0:error解决办法,安装chameleon到EFI隐藏分区</p>
+</blockquote>
+<p>以前安装hackintosh都是一台电脑多个系统，一个mac一个win8以及xp64采用的的分区也是MBR分区方案，使用win版的chameleon来引导mac。最近硬盘坏掉了，从新买了一块新硬盘重做系统，因为用了几个月的mac了对mac已经非常熟悉了，即使用了windows这么多年了，但windows的用户体验做的是在太差了，加之我做开发一点也不喜欢在win平台上搞(比如做web开发的时候在win上就比较蛋疼),而且想搞点音乐win上的live是从mac上移植过去的，经常崩溃。游戏我也不怎么玩况且我喜欢的mac上都有，那么就windows说拜拜吧。</p>
+<p>回到正题，之所以要使用GPT分区是因为windows上的MBR分区最多只支持4个主分区，而且不支持超过2TB的硬盘！但是就现在高速发展的存储技术来说，超过2TB的硬盘的普及肯定是迟早的事情。而GPT分区呢： 1、支持2TB以上的大硬盘。2、每个磁盘的分区个数几乎没有限制。为什么说“几乎”呢？是因为Windows系统最多只允许划分128个分区。不过也完全够用了。3、分区大小几乎没有限制。又是一个“几乎”。因为它用64位的整数表示扇区号。夸张一点说，一个64位整数能代表的分区大小已经是个“天文数字”了，若干年内你都无法见到这样大小的硬盘，更不用说分区了。4、分区表自带备份。在磁盘的首尾部分分别保存了一份相同的分区表。其中一份被破坏后，可以通过另一份恢复。</p>
+<p>好我们现在就开始安装：</p>
+<p><a href="http://pan.baidu.com/share/link?shareid=529172&amp;uk=2198077114">chameleon 2.2svn_r 2190</a></p>
+<p><a href="http://pan.baidu.com/share/link?shareid=529174&amp;uk=2198077114">update.sh</a></p>
+<p>1.打开终端，获取root权限,输入：</p>
+<pre><code>sudo -s</code></pre>
+<p>然后会要求你输入密码
+2.查看硬盘分区及标识符</p>
+<pre><code>diskutil list</code></pre>
+<p>可以看到EFI分区是本机硬盘的第一个分区200MB左右，为disk0s1
+3.建立EFI分区，新建EFI分区才用这步，如只是平时维护更新EFI内容则跳过这步。</p>
+<pre><code>newfs_hfs -v EFI /dev/disk0s1 </code></pre>
+<p>4.新建一个名为EFI的宗卷目录</p>
+<pre><code>mkdir /Volumes/EFI</code></pre>
+<p>5.把EFI分区映射到上面新建的EFI宗卷目录</p>
+<pre><code>mount_hfs /dev/disk0s1 /Volumes/EFI</code></pre>
+<p>该命令执行后，正常会在Finder或桌面显示出EFI分区。这时可以手动把boot、Extra、Extensions、com.apple.Boot.plist、Themes、dsdt.aml,update.sh等等复制进去
+<img src="/images/post/mac_boot0_error_sovled_eisneim.com_.png" alt="mac_boot0_error_sovled" title="mac_boot0_error_sovled"></p>
+<p>6.进入EFI分区</p>
+<pre><code>cd /Volumes/EFI</code></pre>
+<p>执行后，手动把update.sh拖进终端回车。update.sh的作用是修复EFI分区里的Extensions目录及其里面所有kext的权限，以及生成缓存文件。
+7.新建一个名为no_log的空日志文件</p>
+<pre><code>touch /Volumes/EFI/.fseventsd/no_log</code></pre>
+<p>8.推出EFI分区，解除第5步建立的映射关系</p>
+<pre><code>umount /Volumes/EFI</code></pre>
+<p>执行后，EFI分区将会在Finder或桌面上消失。如果遇到推出失败，可执行umount -f /Volumes/EFI
+9.删除第4步建立的EFI宗卷目录。</p>
+<pre><code>rm -rf /Volumes/EFI</code></pre>
+<p>10.进入变色龙的boot目录(或者叫i386，里包含了boot,boot1h等文件)。事先右键显示变色龙安装包的包内容，把里面的boot目录拷贝到桌面，确保boot目录里包含boot0以及boot1h这两个文件。</p>
+<pre><code>cd ~/Desktop/boot</code></pre>
+<p>11.将boot0安装到MBR</p>
+<pre><code>fdisk -f boot0 -u -y /dev/rdisk0</code></pre>
+<p>12.将boot1h安装到引导扇区</p>
+<pre><code>dd if=boot1h of=/dev/rdisk0s1</code></pre>
+<p>好了这里就安装好了，关闭终端然后重启电脑就能看到变色龙的界面了！注意，我看到在远景论坛上的做法是11和12步放在8，9之前，也就是先安装了boot0后再卸载掉EFI，但是在卸载的时候我的电脑会将boot1h抹掉所以最好是最后两步来安装这两个boot文件。以后要修改变色龙的时候或者添加kext的时候就不用执行最后两步了。</p>
+<ol class="post-nav"><a href="/articles/2013-10-how-to-handle-mongoose-error.html" class="post-prev">如何在嵌套的mongoose查询中正确地处理错误信息</a></ol></div><div class="comments"><div class="container"><div id="disqus_thread"></div><script>/* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+var disqus_shortname = 'true'; // required: replace example with your forum shortname
+
+/* * * DON'T EDIT BELOW THIS LINE * * */
+(function() {
+    var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+    dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+})();</script><noscript><p>Please enable JavaScript to view the comments.</p></noscript></div></div><footer role="contentinfo" class="footer"><p><a href="http://eisneim.com" target="_blank">Eisneim.com</a>&copy;2014. | <a href="http://weibo.com/eisneim" target="_blank">Weibo</a> | <a href="https://github.com/eisneim" target="_blank">Github</a> | Built with <a href="http://harpjs.com" target="_blank">Harp</a>. </p></footer><script src="/lib/jquery.js"></script><script src="/lib/prism/prism.js" data-default-language="markup"></script><script>$(function(){
+ var bgcolors = {
+  red:'#D84945',
+  white:'#fff',
+  pale:'#d1d1d1',
+  light_purple:'#CC99CD',
+  purple:'#5C78C6',
+  orange:'#FE6D44',
+  coffee:'#AF7C49',
+  indigo:'#3F51B5',
+  blue:'#46788F',//316AAC
+  cyan:'#8DC7F9',
+  teal:'#159588',
+  green:'#2ECC71',
+  light_green:'#589A5F',
+  lime:'#BAE256',
+  yellow:'#F4C800',
+  dark:'#2D2D2D',
+  bg2:'#3E4A55',
+  bg:'#003837',
+ },
+ match = {
+  bg:'green',
+  bg2:'light_green',
+  dark:'light_purple',
+  coffee:'yellow',
+  orange:'dark',
+  red:'orange',
+  yellow:'white',
+  
+ };
+ var $header = $('.opening');
+ var bg = $header.data('headerbg')||'dark_grey';
+ $header.css('background-color',bgcolors[bg]);
+ //change title color
+ $header.css('color',bgcolors[ match[bg]? match[bg]:'white' ]);
+});</script></body><script>var disqus_shortname = 'true';
+(function () {
+    var s = document.createElement('script'); s.async = true;
+    s.type = 'text/javascript';
+    s.src = '//' + disqus_shortname + '.disqus.com/count.js';
+    (document.getElementsByTagName('HEAD')[0] || document.getElementsByTagName('BODY')[0]).appendChild(s);
+}());</script></html>
